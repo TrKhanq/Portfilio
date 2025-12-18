@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHIM ONLINE | Xem Phim HD Miễn Phí</title>
+    <!-- Tải Tailwind CSS cho giao diện hiện đại và responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải thư viện Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #e50914; /* Netflix Red */
+            --bg-dark: #141414;
+            --text-light: #e5e5e5;
+        }
+
+        /* Dark Mode Mặc định */
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Scrollbar styling for better dark mode look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #202020;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Custom Styles for Buttons and Hover Effects */
+        .btn-primary {
+            background-color: var(--primary-color);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #f40612;
+            transform: scale(1.05);
+        }
+
+        /* Movie Card Hover Effect */
+        .movie-card {
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .movie-card:hover {
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Loading Skeleton Animation */
+        .skeleton {
+            animation: pulse 1.5s infinite ease-in-out;
+            background: linear-gradient(-90deg, #1f1f1f 0%, #292929 50%, #1f1f1f 100%);
+            background-size: 400% 400%;
+        }
+        @keyframes pulse {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Banner styling */
+        .detail-banner {
+            min-height: 400px;
+            background-size: cover;
+            background-position: top center;
+            position: relative;
+        }
+        .detail-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to top, rgba(20, 20, 20, 1) 0%, rgba(20, 20, 20, 0) 50%, rgba(20, 20, 20, 1) 100%);
+            opacity: 0.9;
+        }
+
+        /* Custom Player Styles */
+        #movie-player {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header & Navigation -->
+    <header class="sticky top-0 z-50 bg-black/80 backdrop-blur-sm shadow-xl p-4 md:p-6">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <!-- Logo -->
+            <a href="#home" class="text-3xl font-black text-red-600 hover:text-red-500 transition-colors">PHIMNET</a>
+            
+            <!-- Search Bar -->
+            <div class="relative flex-grow mx-4 md:mx-10 max-w-lg">
+                <input type="text" id="search-input" placeholder="Tìm kiếm phim, series..." 
+                       class="w-full p-2 pl-10 rounded-lg bg-gray-800 text-white focus:ring-red-600 focus:ring-2 focus:outline-none transition-shadow" />
+                <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                
+                <!-- Autocomplete Dropdown -->
+                <div id="autocomplete-results" class="absolute top-full mt-2 w-full bg-gray-800 rounded-lg shadow-2xl max-h-64 overflow-y-auto hidden">
+                    <!-- Results dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Profile/Menu Placeholder -->
+            <div class="flex items-center space-x-4">
+                <button class="text-white p-2 rounded-full hover:bg-gray-700 transition-colors">
+                    <i data-lucide="bell" class="w-6 h-6"></i>
+                </button>
+                <div class="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-sm font-bold">U</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main id="app-content" class="max-w-7xl mx-auto px-4 py-8 md:py-12">
+        <!-- Dynamic content will be loaded here based on the route -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-20 p-8 text-center bg-black/50 text-gray-400">
+        <p>© 2025 PHIMNET Clone. Demo by Full-stack Developer. Dữ liệu từ TMDb.</p>
+        <div class="mt-2 space-x-4">
+            <a href="#" class="hover:text-red-500 transition-colors">Điều khoản</a>
+            <a href="#" class="hover:text-red-500 transition-colors">Chính sách bảo mật</a>
+            <a href="#" class="hover:text-red-500 transition-colors">Liên hệ</a>
+        </div>
+    </footer>
+
+    <!-- Movie Card Template (Hidden) -->
+    <template id="movie-card-template">
+        <div class="movie-card bg-gray-800 rounded-lg shadow-lg">
+            <img src="" alt="" class="w-full h-auto object-cover rounded-t-lg transition-opacity duration-300 movie-poster" loading="lazy">
+            <div class="p-3">
+                <p class="font-semibold text-sm truncate movie-title"></p>
+                <p class="text-xs text-gray-400 movie-year"></p>
+            </div>
+        </div>
+    </template>
+
+    <!-- Search Result Template (Hidden) -->
+    <template id="search-result-template">
+        <a href="#" class="flex items-center p-2 hover:bg-gray-700 transition-colors search-link">
+            <img src="" alt="" class="w-10 h-14 object-cover rounded mr-3 search-img">
+            <div>
+                <p class="text-sm font-medium search-title"></p>
+                <p class="text-xs text-gray-400 search-year"></p>
+            </div>
+        </a>
+    </template>
+
+
+    <script type="module">
+        // ==========================================================
+        // KHAI BÁO VÀ HẰNG SỐ (CONSTANTS & CONFIG)
+        // ==========================================================
+        const API_KEY = '9b7c3ede447b14c5e0e9d33a137ddac9'; // API key được cung cấp
+        const BASE_URL = 'https://api.themoviedb.org/3/';
+        const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
+        const APP_CONTENT = document.getElementById('app-content');
+        const SEARCH_INPUT = document.getElementById('search-input');
+        const AUTOCOMPLETE_RESULTS = document.getElementById('autocomplete-results');
+
+        // Hàm tiện ích: Chuyển đổi phút thành giờ và phút (Ví dụ: 150 phút -> 2 giờ 30 phút)
+        const formatRuntime = (minutes) => {
+            if (!minutes) return 'N/A';
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            return `${h} giờ ${m} phút`;
+        };
+
+        // Hàm tiện ích: Tạo URL ảnh với kích thước tùy chọn
+        const getImageUrl = (path, size = 'w500') => 
+            path ? `${IMAGE_BASE_URL}${size}${path}` : 'https://placehold.co/500x750/1f1f1f/555?text=NO+POSTER';
+
+        // Hàm tiện ích: Xử lý lỗi (console log và hiển thị thông báo)
+        const handleError = (error, message = "Đã xảy ra lỗi trong quá trình xử lý.") => {
+            console.error(message, error);
+            APP_CONTENT.innerHTML = `
+                <div class="text-center p-10 bg-gray-900 rounded-xl">
+                    <i data-lucide="alert-triangle" class="w-12 h-12 text-red-600 mx-auto mb-4"></i>
+                    <h2 class="text-xl font-bold text-red-500">${message}</h2>
+                    <p class="text-gray-400 mt-2">Vui lòng thử lại sau.</p>
+                </div>
+            `;
+            lucide.createIcons(); // Re-render icons after changing content
+        };
+
+        // Hàm tiện ích: Delay (debounce) cho tìm kiếm
+        let searchTimeout;
+        const debounce = (func, delay) => {
+            return (...args) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        };
+
+        // ==========================================================
+        // XỬ LÝ API (API CALLS)
+        // ==========================================================
+
+        /**
+         * @description Gọi API chính đến TMDb
+         * @param {string} endpoint - Đường dẫn API (ví dụ: 'trending/movie/week')
+         * @param {object} params - Các tham số truy vấn bổ sung
+         * @returns {Promise<object>} Dữ liệu từ API
+         */
+        const fetchTMDb = async (endpoint, params = {}) => {
+            const urlParams = new URLSearchParams({
+                api_key: API_KEY,
+                language: 'vi-VN', // Yêu cầu nội dung tiếng Việt
+                ...params,
+            });
+            const url = `${BASE_URL}${endpoint}?${urlParams.toString()}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Lỗi HTTP: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                handleError(error, `Không thể tải dữ liệu từ ${endpoint}.`);
+                throw error;
+            }
+        };
+
+        // 1. Lấy Danh sách phim mới/phổ biến (Home Page)
+        const getTrendingMovies = (page = 1) => fetchTMDb('trending/movie/week', { page });
+        const getPopularMovies = (page = 1) => fetchTMDb('movie/popular', { page });
+        
+        // 2. Tìm kiếm phim
+        const searchMovies = (query, page = 1) => fetchTMDb('search/movie', { query, page });
+        
+        // 3. Lấy Chi tiết phim (Trang Chi tiết)
+        const getMovieDetail = (id) => fetchTMDb(`movie/${id}`);
+        const getMovieVideos = (id) => fetchTMDb(`movie/${id}/videos`); // Lấy trailer
+        const getGenres = () => fetchTMDb('genre/movie/list');
+
+        // ==========================================================
+        // XỬ LÝ GIAO DIỆN (UI RENDERING)
+        // ==========================================================
+
+        // Hiển thị Movie Card
+        const renderMovieCard = (movie) => {
+            if (!movie.poster_path) return ''; // Bỏ qua phim không có poster
+
+            const template = document.getElementById('movie-card-template');
+            const clone = template.content.cloneNode(true);
+            const card = clone.querySelector('.movie-card');
+            const poster = clone.querySelector('.movie-poster');
+            const title = clone.querySelector('.movie-title');
+            const year = clone.querySelector('.movie-year');
+
+            const releaseDate = movie.release_date || movie.first_air_date;
+            const yearText = releaseDate ? new Date(releaseDate).getFullYear() : 'N/A';
+            const movieTitle = movie.title || movie.name;
+
+            poster.src = getImageUrl(movie.poster_path, 'w342');
+            poster.alt = movieTitle;
+            title.textContent = movieTitle;
+            year.textContent = yearText;
+            
+            // Xử lý chuyển trang chi tiết khi click
+            card.onclick = () => window.location.hash = `movie-${movie.id}`;
+
+            return clone;
+        };
+        
+        // Hiển thị Loading Skeleton
+        const renderSkeleton = (count) => {
+            const container = document.createElement('div');
+            container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6';
+            for (let i = 0; i < count; i++) {
+                container.innerHTML += `
+                    <div class="movie-card bg-gray-800 rounded-lg shadow-lg">
+                        <div class="w-full aspect-[2/3] skeleton rounded-t-lg"></div>
+                        <div class="p-3">
+                            <div class="h-4 w-3/4 skeleton rounded mb-1"></div>
+                            <div class="h-3 w-1/4 skeleton rounded"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            return container;
+        };
+
+        // ==========================================================
+        // ROUTE HANDLERS
+        // ==========================================================
+
+        /**
+         * @description Trang Chủ: Hiển thị phim phổ biến và phim mới cập nhật
+         */
+        const renderHome = async () => {
+            APP_CONTENT.innerHTML = '';
+            
+            const renderSection = async (title, fetchFunc) => {
+                const section = document.createElement('section');
+                section.className = 'mb-12';
+                section.innerHTML = `
+                    <h2 class="text-3xl font-bold mb-6 text-white">${title}</h2>
+                    <div class="grid-container grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                        <!-- Skeleton placeholders -->
+                    </div>
+                `;
+                APP_CONTENT.appendChild(section);
+
+                const gridContainer = section.querySelector('.grid-container');
+                const skeleton = renderSkeleton(6);
+                gridContainer.replaceWith(skeleton);
+
+                try {
+                    const data = await fetchFunc();
+                    const movieContainer = document.createElement('div');
+                    movieContainer.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6';
+                    
+                    data.results.forEach(movie => {
+                        const card = renderMovieCard(movie);
+                        if (card) movieContainer.appendChild(card);
+                    });
+                    
+                    // Thay thế skeleton bằng nội dung thật
+                    skeleton.replaceWith(movieContainer);
+
+                } catch (error) {
+                    // Lỗi đã được xử lý trong handleError của fetchTMDb
+                    skeleton.innerHTML = `<p class="text-red-400 p-4">Không thể tải danh sách phim này.</p>`;
+                }
+            };
+
+            await renderSection('Phim Phổ Biến Tuần Này', getTrendingMovies);
+            await renderSection('Phim Mới Phát Hành', getPopularMovies);
+
+            // Tải lại icon Lucide
+            lucide.createIcons();
+        };
+        
+        /**
+         * @description Trang Chi Tiết Phim: Hiển thị thông tin, trailer
+         */
+        const renderMovieDetail = async (movieId) => {
+            APP_CONTENT.innerHTML = renderSkeleton(1).outerHTML; // Hiển thị Skeleton cho detail
+
+            try {
+                // Fetch đồng thời chi tiết phim và trailer
+                const [movie, videosData] = await Promise.all([
+                    getMovieDetail(movieId),
+                    getMovieVideos(movieId)
+                ]);
+
+                // Tìm Trailer chính thức (loại 'Trailer', trang thái 'Official')
+                const trailer = videosData.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+                const trailerUrl = trailer ? `https://www.youtube.com/embed/${trailer.key}?autoplay=0&controls=1&modestbranding=1&rel=0` : null;
+
+                const backdropUrl = getImageUrl(movie.backdrop_path, 'w1280');
+                const posterUrl = getImageUrl(movie.poster_path, 'w500');
+                const rating = movie.vote_average ? (movie.vote_average).toFixed(1) : 'N/A';
+                const runtimeText = formatRuntime(movie.runtime);
+                const genresText = movie.genres.map(g => g.name).join(', ');
+                const overviewText = movie.overview || 'Đang cập nhật nội dung...';
+                
+                // MOCK: Giả định đây là một Series Phim Bộ (TV Show) nếu có "number_of_episodes"
+                const isSeries = movie.number_of_episodes > 0 || movie.seasons?.length > 0;
+                const episodesList = isSeries ? `
+                    <div class="mt-8">
+                        <h3 class="text-2xl font-semibold mb-4 text-white">Danh Sách Tập</h3>
+                        <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                            ${(movie.seasons || []).map((season, index) => `
+                                <div class="p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer" 
+                                     onclick="window.location.hash = 'watch-${movie.id}/s${season.season_number}e1'">
+                                    <p class="font-medium">Phần ${season.season_number} - ${season.name}</p>
+                                    <p class="text-sm text-gray-400">${season.episode_count} tập - Phát hành ${new Date(season.air_date).getFullYear()}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : `
+                    <button class="mt-6 btn-primary px-8 py-3 rounded-xl text-lg font-bold flex items-center space-x-2"
+                        onclick="window.location.hash = 'watch-${movie.id}'">
+                        <i data-lucide="play" class="w-6 h-6"></i>
+                        <span>XEM PHIM NGAY</span>
+                    </button>
+                `;
+
+
+                APP_CONTENT.innerHTML = `
+                    <!-- Banner Section -->
+                    <div class="detail-banner rounded-xl overflow-hidden shadow-2xl" 
+                         style="background-image: url('${backdropUrl}')">
+                        <div class="relative max-w-5xl mx-auto p-6 md:p-12 flex flex-col md:flex-row items-end pt-40">
+                            <!-- Poster -->
+                            <img src="${posterUrl}" alt="${movie.title}" class="w-48 h-auto rounded-lg shadow-xl mb-4 md:mb-0 transform translate-y-12 md:translate-y-0 object-cover hidden md:block" />
+                            
+                            <!-- Info -->
+                            <div class="md:ml-8 text-white z-10">
+                                <h1 class="text-4xl md:text-5xl font-extrabold mb-2">${movie.title}</h1>
+                                <div class="flex items-center space-x-4 text-lg mb-4">
+                                    <span class="text-yellow-400 font-bold flex items-center">
+                                        <i data-lucide="star" class="w-5 h-5 mr-1 fill-yellow-400"></i>
+                                        ${rating}
+                                    </span>
+                                    <span>${new Date(movie.release_date).getFullYear()}</span>
+                                    <span>${runtimeText}</span>
+                                </div>
+                                <p class="text-gray-300 italic mb-4">Thể loại: ${genresText}</p>
+                                <p class="text-base mb-6 max-w-2xl line-clamp-4">${overviewText}</p>
+                                
+                                ${episodesList}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trailer Section -->
+                    ${trailerUrl ? `
+                    <div class="mt-20">
+                        <h2 class="text-3xl font-bold mb-6 text-white">Trailer Chính Thức</h2>
+                        <div class="aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-2xl">
+                            <iframe src="${trailerUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen 
+                                    class="w-full h-full"></iframe>
+                        </div>
+                    </div>
+                    ` : '<div class="mt-20 text-center text-gray-500"><p>Không tìm thấy Trailer chính thức.</p></div>'}
+                `;
+                
+                lucide.createIcons(); // Tải lại icon
+            } catch (error) {
+                // Lỗi đã được xử lý trong handleError
+                APP_CONTENT.innerHTML = `<p class="text-red-400 p-10 text-center">Không thể tải chi tiết phim.</p>`;
+            }
+        };
+
+        /**
+         * @description Trang Xem Phim: Player HTML5 (MOCK) và danh sách tập
+         */
+        const renderWatchPage = async (movieId, season = 1, episode = 1) => {
+            APP_CONTENT.innerHTML = renderSkeleton(1).outerHTML;
+            
+            try {
+                const movie = await getMovieDetail(movieId);
+                const isSeries = movie.number_of_episodes > 0 || movie.seasons?.length > 0;
+                
+                let currentTitle = movie.title;
+                let episodes = [];
+                let currentEpisodeTitle = 'Phim Lẻ';
+
+                if (isSeries) {
+                    const currentSeason = movie.seasons?.find(s => s.season_number == season);
+                    if (currentSeason) {
+                        currentTitle = `${movie.title} - Phần ${season}`;
+                        // MOCK: Tạo danh sách 5 tập giả định nếu không có API chi tiết tập
+                        for(let i = 1; i <= Math.min(5, currentSeason.episode_count || 5); i++) {
+                            episodes.push({ number: i, title: `Tập ${i}` });
+                        }
+                    }
+                    currentEpisodeTitle = `Tập ${episode}`;
+                } else {
+                    // Nếu là phim lẻ, giả định chỉ có 1 "tập"
+                    episodes.push({ number: 1, title: 'Bản Full HD' });
+                    episode = 1;
+                }
+
+                // Lấy thông tin tập đã xem từ localStorage
+                const watchedKey = `watched-${movieId}-${isSeries ? 'series' : 'movie'}`;
+                const watchedEpisode = JSON.parse(localStorage.getItem(watchedKey)) || { episode: 0, server: 1 };
+                
+                // Cập nhật localStorage khi người dùng xem
+                const updateWatchedHistory = (ep, srv) => {
+                    localStorage.setItem(watchedKey, JSON.stringify({ episode: ep, server: srv }));
+                    document.getElementById('watched-indicator')?.remove();
+                };
+
+                // Server MOCK
+                const servers = [{ id: 1, name: 'Server VIP' }, { id: 2, name: 'Server Nhanh' }];
+
+                const renderPlayer = (currentServer) => {
+                    // MOCK: Giả định Player HTML5 (thực tế sẽ là iframe nhúng hoặc video tag với source)
+                    const serverName = servers.find(s => s.id === currentServer)?.name || 'Server VIP';
+                    return `
+                        <div id="movie-player" class="relative rounded-xl overflow-hidden shadow-2xl">
+                            <!-- HTML5 Video Player MOCK -->
+                            <div class="absolute inset-0 bg-black flex flex-col items-center justify-center text-white p-4">
+                                <i data-lucide="monitor-play" class="w-16 h-16 text-red-600 mb-4"></i>
+                                <p class="text-2xl font-bold mb-2">${currentTitle} - ${currentEpisodeTitle}</p>
+                                <p class="text-sm text-gray-400">Đang phát từ ${serverName}. (Mô phỏng Player)</p>
+                                <p class="text-xs mt-2">Nội dung video thực tế cần nguồn phát riêng.</p>
+                            </div>
+                        </div>
+                    `;
+                };
+
+                const playerHtml = renderPlayer(watchedEpisode.server);
+
+                APP_CONTENT.innerHTML = `
+                    <h1 class="text-3xl font-bold mb-6 text-white">${currentTitle} - ${currentEpisodeTitle}</h1>
+                    
+                    <!-- Player Section -->
+                    <div class="mb-8">
+                        ${playerHtml}
+                    </div>
+
+                    <!-- Server and Episode Controls -->
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <!-- Left: Server Selector & Controls -->
+                        <div class="md:w-3/4">
+                            <h2 class="text-xl font-bold mb-3">Chọn Server Phát</h2>
+                            <div class="flex space-x-3 mb-6" id="server-selector">
+                                ${servers.map(s => `
+                                    <button data-server-id="${s.id}" 
+                                            class="px-4 py-2 rounded-lg font-medium transition-all ${watchedEpisode.server === s.id ? 'bg-red-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}">
+                                        ${s.name}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            
+                            <!-- Next/Prev Episode (for Series) -->
+                            ${isSeries ? `
+                                <div class="flex justify-between items-center bg-gray-900 p-4 rounded-xl mt-6">
+                                    <button class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-red-600 transition-colors disabled:opacity-50" ${episode <= 1 ? 'disabled' : ''}
+                                        onclick="window.location.hash = 'watch-${movieId}/s${season}e${episode - 1}'">
+                                        <i data-lucide="chevrons-left" class="w-5 h-5 inline-block mr-1"></i> Tập Trước
+                                    </button>
+                                    <span class="text-white font-medium">Đang xem: Tập ${episode}</span>
+                                    <button class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-red-600 transition-colors disabled:opacity-50" ${episode >= episodes.length ? 'disabled' : ''}
+                                        onclick="window.location.hash = 'watch-${movieId}/s${season}e${episode + 1}'; updateWatchedHistory(${episode + 1}, ${watchedEpisode.server})">
+                                        Tập Tiếp <i data-lucide="chevrons-right" class="w-5 h-5 inline-block ml-1"></i>
+                                    </button>
+                                </div>
+                                <div class="mt-4 p-4 text-sm bg-green-900/50 text-green-400 rounded-lg flex items-center" id="watched-indicator">
+                                    <i data-lucide="bookmark-check" class="w-5 h-5 mr-2"></i>
+                                    Bạn đã xem đến Tập ${watchedEpisode.episode} trên ${servers.find(s=>s.id === watchedEpisode.server)?.name}.
+                                </div>
+                            ` : ''}
+
+                        </div>
+
+                        <!-- Right: Episode List (for Series) / Details (for Movie) -->
+                        <div class="md:w-1/4 bg-gray-800 p-4 rounded-xl shadow-lg">
+                            <h2 class="text-xl font-bold mb-4">${isSeries ? 'Các Tập' : 'Chi Tiết Phim'}</h2>
+                            ${isSeries ? `
+                                <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                    ${episodes.map(ep => `
+                                        <a href="#watch-${movieId}/s${season}e${ep.number}" 
+                                           class="block p-3 rounded-lg transition-colors ${ep.number == episode ? 'bg-red-600 font-bold' : 'bg-gray-700 hover:bg-gray-600'}">
+                                            ${ep.title}
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <p class="text-sm text-gray-400">Thể loại: ${movie.genres.map(g => g.name).join(', ')}</p>
+                                <p class="text-sm text-gray-400 mt-2">Thời lượng: ${runtimeText}</p>
+                                <p class="text-sm text-gray-400 mt-2">Đánh giá: <span class="text-yellow-400">${movie.vote_average.toFixed(1)}/10</span></p>
+                                <button class="mt-4 w-full btn-primary px-4 py-2 rounded-lg" onclick="window.location.hash = 'movie-${movieId}'">
+                                    <i data-lucide="info" class="w-4 h-4 inline-block mr-1"></i> Xem Chi Tiết
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+
+                // Add event listeners for server selection
+                document.querySelectorAll('#server-selector button').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const newServerId = parseInt(this.dataset.serverId);
+                        
+                        // Cập nhật giao diện server
+                        document.querySelectorAll('#server-selector button').forEach(btn => {
+                            btn.classList.remove('bg-red-600');
+                            btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                        });
+                        this.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                        this.classList.add('bg-red-600');
+
+                        // Cập nhật trạng thái đã xem (mô phỏng)
+                        updateWatchedHistory(episode, newServerId);
+                        
+                        // Tải lại player (mô phỏng)
+                        const playerContainer = document.querySelector('.mb-8');
+                        playerContainer.innerHTML = renderPlayer(newServerId);
+                        lucide.createIcons();
+                    });
+                });
+
+
+                lucide.createIcons();
+            } catch (error) {
+                APP_CONTENT.innerHTML = `<p class="text-red-400 p-10 text-center">Không thể tải trang xem phim.</p>`;
+            }
+        };
+
+
+        /**
+         * @description Xử lý Tìm kiếm Phim (Autocomplete & Results)
+         */
+        const handleSearch = debounce(async (query) => {
+            AUTOCOMPLETE_RESULTS.innerHTML = '';
+            if (query.length < 2) {
+                AUTOCOMPLETE_RESULTS.classList.add('hidden');
+                return;
+            }
+
+            AUTOCOMPLETE_RESULTS.classList.remove('hidden');
+
+            try {
+                const data = await searchMovies(query, 1);
+                
+                if (data.results && data.results.length > 0) {
+                    // Chỉ hiển thị tối đa 5 kết quả cho autocomplete
+                    data.results.slice(0, 5).forEach(movie => {
+                        const template = document.getElementById('search-result-template');
+                        const clone = template.content.cloneNode(true);
+                        const link = clone.querySelector('.search-link');
+                        const img = clone.querySelector('.search-img');
+                        const title = clone.querySelector('.search-title');
+                        const year = clone.querySelector('.search-year');
+
+                        const movieTitle = movie.title || movie.name;
+                        const releaseDate = movie.release_date || movie.first_air_date;
+                        const yearText = releaseDate ? new Date(releaseDate).getFullYear() : '';
+                        
+                        img.src = getImageUrl(movie.poster_path, 'w92');
+                        img.alt = movieTitle;
+                        title.textContent = movieTitle;
+                        year.textContent = yearText;
+                        link.href = `#movie-${movie.id}`;
+                        link.onclick = () => {
+                            AUTOCOMPLETE_RESULTS.classList.add('hidden');
+                            SEARCH_INPUT.value = movieTitle; // Giữ lại tên phim đã chọn
+                        };
+
+                        AUTOCOMPLETE_RESULTS.appendChild(clone);
+                    });
+                } else {
+                    AUTOCOMPLETE_RESULTS.innerHTML = '<p class="p-3 text-gray-400 text-sm">Không tìm thấy kết quả phù hợp.</p>';
+                }
+
+            } catch (error) {
+                // Xử lý lỗi nhưng vẫn giữ UI gọn gàng
+                AUTOCOMPLETE_RESULTS.innerHTML = '<p class="p-3 text-red-400 text-sm">Lỗi tải dữ liệu tìm kiếm.</p>';
+            }
+        }, 300); // Debounce 300ms
+
+        // ==========================================================
+        // ROUTING & INIT
+        // ==========================================================
+
+        /**
+         * @description Hàm điều hướng chính (Router)
+         */
+        const router = () => {
+            const hash = window.location.hash.substring(1);
+            
+            // Xóa kết quả autocomplete khi chuyển trang
+            AUTOCOMPLETE_RESULTS.classList.add('hidden');
+
+            if (hash.startsWith('movie-')) {
+                const movieId = hash.replace('movie-', '');
+                renderMovieDetail(movieId);
+            } else if (hash.startsWith('watch-')) {
+                // Xử lý route xem phim: #watch-123/s1e2 hoặc #watch-123
+                const parts = hash.split('/');
+                const movieId = parts[0].replace('watch-', '');
+                let season = 1;
+                let episode = 1;
+
+                if (parts.length > 1) {
+                    const episodeMatch = parts[1].match(/s(\d+)e(\d+)/);
+                    if (episodeMatch) {
+                        season = parseInt(episodeMatch[1], 10);
+                        episode = parseInt(episodeMatch[2], 10);
+                    }
+                }
+                renderWatchPage(movieId, season, episode);
+            }
+             else {
+                // Mặc định: Trang chủ
+                renderHome();
+            }
+        };
+
+        // Gắn sự kiện cho ô tìm kiếm
+        SEARCH_INPUT.addEventListener('input', (e) => handleSearch(e.target.value));
+        
+        // Bắt sự kiện click bên ngoài để đóng autocomplete
+        document.addEventListener('click', (e) => {
+            if (!SEARCH_INPUT.contains(e.target) && !AUTOCOMPLETE_RESULTS.contains(e.target)) {
+                AUTOCOMPLETE_RESULTS.classList.add('hidden');
+            }
+        });
+
+        // Lắng nghe sự kiện thay đổi hash (chuyển trang)
+        window.addEventListener('hashchange', router);
+
+        // Khởi tạo ứng dụng
+        window.onload = () => {
+            lucide.createIcons(); // Khởi tạo icons ban đầu
+            if (!window.location.hash) {
+                window.location.hash = 'home'; // Đặt hash mặc định nếu chưa có
+            }
+            router(); // Chạy router lần đầu
+        };
+    </script>
+</body>
+</html>

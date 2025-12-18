@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Bi-a 2D</title>
+    <!-- Tải Tailwind CSS để tạo kiểu nhanh chóng -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải thư viện p5.js cho đồ họa và vật lý -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        /* Thiết lập giao diện để canh giữa */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #2c2c2c;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        canvas {
+            border: 8px solid #3d3d3d;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container" class="rounded-lg shadow-xl p-4 bg-gray-800">
+    <h1 class="text-2xl font-bold text-white mb-4 text-center">Game Bi-a 2D</h1>
+    <div id="game-canvas">
+        <!-- Canvas p5.js sẽ được đặt ở đây -->
+    </div>
+    <div id="status-message" class="text-center text-lg font-medium text-yellow-300 mt-4">
+        Đang tải...
+    </div>
+    <div class="text-center text-sm text-gray-400 mt-2">
+        Cách chơi: Kéo chuột ra khỏi bóng cái (trắng) và thả để bắn.
+    </div>
+</div>
+
+<script>
+// --- CẤU HÌNH ---
+const WIDTH = 800;
+const HEIGHT = 450;
+const BALL_RADIUS = 10;
+const RAIL_THICKNESS = 25;
+const POCKET_RADIUS = BALL_RADIUS * 1.8;
+const FRICTION = 0.995;
+const MAX_SPEED = 15;
+const FPS = 60; // Tốc độ khung hình
+
+// --- MÀU SẮC (Sử dụng chuẩn 8-bi) ---
+const WHITE = [255, 255, 255];
+const GREEN = [0, 100, 0];
+const BLACK = [0, 0, 0];
+const RED = [200, 0, 0];
+const YELLOW = [255, 255, 0];
+const DARK_BROWN = [101, 67, 33];
+// Các màu khác
+const BLUE = [0, 0, 255];
+const PURPLE = [128, 0, 128];
+const ORANGE = [255, 165, 0];
+const DARK_GREEN = [0, 128, 0];
+const MAROON = [128, 0, 0];
+
+
+let sketch;
+let game;
+
+// --- LỚP BÓNG ---
+class Ball {
+    constructor(x, y, color, number = 0) {
+        this.pos = sketch.createVector(x, y);
+        this.color = color;
+        this.radius = BALL_RADIUS;
+        this.velocity = sketch.createVector(0, 0);
+        this.moving = false;
+        this.number = number;
+        this.mass = 1; 
+        this.diameter = this.radius * 2;
+        this.pocketed = false;
+    }
+
+    draw() {
+        if (this.pocketed) return;
+        
+        sketch.fill(this.color[0], this.color[1], this.color[2]);
+        sketch.stroke(BLACK);
+        sketch.strokeWeight(1);
+        sketch.ellipse(this.pos.x, this.pos.y, this.diameter, this.diameter);
+        
+        // Vẽ số trên bóng
+        if (this.number > 0) {
+            sketch.fill(BLACK);
+            // Nếu là bóng số 8 (đen) hoặc bóng sẫm màu, dùng chữ trắng
+            if (this.number === 8 || this.number === 2 || this.number === 4) {
+                 sketch.fill(WHITE);
+            }
+            
+            sketch.textSize(12);
+            sketch.textAlign(sketch.CENTER, sketch.CENTER);
+            sketch.text(this.number, this.pos.x, this.pos.y);
+        }
+    }
+
+    update() {
+        if (this.pocketed) return;
+        
+        // Cập nhật vị trí
+        this.pos.add(this.velocity);
+        
+        // Áp dụng ma sát
+        this.velocity.mult(FRICTION);
+
+        // Kiểm tra dừng
+        if (this.velocity.magSq() < 0.1) {
+            this.velocity.set(0, 0);
+            this.moving = false;
+        } else {
+            this.moving = true;
+        }
+    }
+    
+    checkWallCollision(table) {
+        if (this.pocketed) return;
+
+        // Biên giới trong của bàn (trừ các vùng lỗ)
+        const minX = table.x + this.radius;
+        const maxX = table.x + table.width - this.radius;
+        const minY = table.y + this.radius;
+        const maxY = table.y + table.height - this.radius;
+        
+        // Xử lý va chạm ngang
+        if (this.pos.x < minX) {
+            this.pos.x = minX;
+            this.velocity.x *= -1;
+        } else if (this.pos.x > maxX) {
+            this.pos.x = maxX;
+            this.velocity.x *= -1;
+        }
+            
+        // Xử lý va chạm dọc
+        if (this.pos.y < minY) {
+            this.pos.y = minY;
+            this.velocity.y *= -1;
+        } else if (this.pos.y > maxY) {
+            this.pos.y = maxY;
+            this.velocity.y *= -1;
+        }
+    }
+    
+    // Va chạm giữa hai bóng (Sử dụng vật lý đơn giản)
+    static checkCollision(ballA, ballB) {
+        if (ballA.pocketed || ballB.pocketed) return;
+
+        const distanceVec = ballB.pos.copy().sub(ballA.pos);
+        const distance = distanceVec.mag();
+        
+        // Kiểm tra va chạm
+        if (distance < ballA.radius + ballB.radius) {
+            
+            // Xử lý chồng chéo (đẩy ra)
+            const overlap = (ballA.radius + ballB.radius) - distance;
+            const separation = distanceVec.copy().normalize().mult(overlap / 2);
+            
+            ballA.pos.sub(separation);
+            ballB.pos.add(separation);
+            
+            // Tính toán va chạm (phản xạ đàn hồi 1D trên trục va chạm)
+            const normal = distanceVec.normalize();
+            const relativeVelocity = ballB.velocity.copy().sub(ballA.velocity);
+            
+            // Lực va chạm (dot product)
+            let impulse = relativeVelocity.dot(normal);
+
+            // Nếu bóng đang di chuyển ra xa nhau, không làm gì
+            if (impulse > 0) return;
+            
+            // Công thức va chạm elastic (đơn giản, bỏ qua xoáy)
+            const totalMass = ballA.mass + ballB.mass;
+            const impulseA = normal.copy().mult(2 * ballB.mass / totalMass * impulse);
+            const impulseB = normal.copy().mult(2 * ballA.mass / totalMass * impulse);
+
+            ballA.velocity.add(impulseA);
+            ballB.velocity.sub(impulseB);
+        }
+    }
+}
+
+// --- LỚP GAME ---
+class BilliardsGame {
+    constructor() {
+        this.table = {
+            x: RAIL_THICKNESS,
+            y: RAIL_THICKNESS,
+            width: WIDTH - 2 * RAIL_THICKNESS,
+            height: HEIGHT - 2 * RAIL_THICKNESS
+        };
+        
+        this.pockets = this.calculatePockets();
+
+        this.target_balls = this.createTargetBalls();
+        this.cue_ball = new Ball(WIDTH * 0.75, HEIGHT / 2, WHITE, 0);
+        this.all_balls = [this.cue_ball].concat(this.target_balls);
+        
+        this.shooting_mode = false;
+        this.shoot_start_pos = null;
+        this.game_over = false;
+        this.message = "Nhấn chuột trái gần bóng trắng và kéo để bắn!";
+        this.statusElement = document.getElementById('status-message');
+    }
+    
+    calculatePockets() {
+        const x = this.table.x;
+        const y = this.table.y;
+        const w = this.table.width;
+        const h = this.table.height;
+        return [
+            sketch.createVector(x, y),                  // Góc trên trái
+            sketch.createVector(x + w / 2, y),          // Giữa trên
+            sketch.createVector(x + w, y),              // Góc trên phải
+            sketch.createVector(x, y + h),              // Góc dưới trái
+            sketch.createVector(x + w / 2, y + h),      // Giữa dưới
+            sketch.createVector(x + w, y + h)           // Góc dưới phải
+        ];
+    }
+    
+    createTargetBalls() {
+        const balls = [];
+        const ballDefinitions = [];
+        
+        // Định nghĩa màu và số theo luật 8-bi
+        const colorMap = {
+            1: YELLOW,   // Solid
+            2: BLUE,
+            3: RED,
+            4: PURPLE,
+            5: ORANGE,
+            6: DARK_GREEN,
+            7: MAROON,
+            8: BLACK,           // 8-Ball
+            9: YELLOW,   // Striped (dùng màu nền tương ứng)
+            10: BLUE,    
+            11: RED,    
+            12: PURPLE, 
+            13: ORANGE, 
+            14: DARK_GREEN,
+            15: MAROON      
+        };
+
+        for (let i = 1; i <= 15; i++) {
+            ballDefinitions.push({ number: i, color: colorMap[i] });
+        }
+
+        // --- Thiết lập vị trí 15 bóng theo luật (1 ở đỉnh, 8 ở giữa) ---
+        let fixedBalls = [
+            ballDefinitions.find(b => b.number === 1), // 1-ball (Apex)
+            ballDefinitions.find(b => b.number === 8)  // 8-ball (Center)
+        ];
+        let remainingBalls = ballDefinitions.filter(b => b.number !== 1 && b.number !== 8);
+        
+        // Xáo trộn 13 bóng còn lại
+        for (let i = remainingBalls.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [remainingBalls[i], remainingBalls[j]] = [remainingBalls[j], remainingBalls[i]];
+        }
+
+        // Vị trí xếp hình tam giác (5 hàng: 1, 2, 3, 4, 5 bóng)
+        const startX = WIDTH / 4;
+        const startY = HEIGHT / 2;
+        const r2 = BALL_RADIUS * 2;
+        const h = Math.sqrt(3) / 2; // Khoảng cách ngang giữa các hàng
+
+        const rackPositions = [];
+        // Tạo 15 vị trí
+        for (let row = 0; row < 5; row++) {
+            const ballsInRow = row + 1;
+            const xOffset = r2 * h * row;
+            
+            for (let i = 0; i < ballsInRow; i++) {
+                const yOffset = (i - (ballsInRow - 1) / 2) * r2;
+                rackPositions.push(sketch.createVector(startX + xOffset, startY + yOffset));
+            }
+        }
+        
+        let rackedBallData = Array(15);
+        
+        // 1. Đặt bóng số 1 (Apex - index 0)
+        rackedBallData[0] = fixedBalls[0]; 
+
+        // 2. Đặt bóng số 8 (Center of row 3 - index 4)
+        rackedBallData[4] = fixedBalls[1];
+
+        // 3. Đặt 13 bóng còn lại ngẫu nhiên
+        let remainingSlots = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+        for (let i = 0; i < remainingSlots.length; i++) {
+            rackedBallData[remainingSlots[i]] = remainingBalls[i];
+        }
+        
+        // 4. Tạo đối tượng Ball
+        for (let i = 0; i < 15; i++) {
+            const ballData = rackedBallData[i];
+            const pos = rackPositions[i];
+            balls.push(new Ball(pos.x, pos.y, ballData.color, ballData.number));
+        }
+        
+        return balls;
+    }
+
+    isBallsMoving() {
+        return this.all_balls.some(ball => ball.moving);
+    }
+    
+    handleInput() {
+        if (this.game_over || this.isBallsMoving()) {
+            return;
+        }
+
+        const mousePos = sketch.createVector(sketch.mouseX, sketch.mouseY);
+
+        // Chuột nhấn (Bắt đầu bắn)
+        if (sketch.mouseIsPressed && sketch.mouseButton === sketch.LEFT) {
+            if (!this.shooting_mode && this.cue_ball.pos.dist(mousePos) < BALL_RADIUS * 2) {
+                this.shooting_mode = true;
+                this.shoot_start_pos = mousePos.copy();
+            }
+        } 
+        
+        // Chuột thả (Kết thúc bắn)
+        if (sketch.mouseButton === sketch.LEFT && !sketch.mouseIsPressed) {
+            if (this.shooting_mode) {
+                const shootEndPos = sketch.createVector(sketch.mouseX, sketch.mouseY);
+                let forceVector = this.shoot_start_pos.copy().sub(shootEndPos);
+                
+                // Giới hạn vận tốc
+                if (forceVector.mag() > MAX_SPEED) {
+                    forceVector.normalize().mult(MAX_SPEED);
+                }
+
+                this.cue_ball.velocity = forceVector;
+                this.shooting_mode = false;
+                this.shoot_start_pos = null;
+            }
+        }
+    }
+
+    update() {
+        if (this.game_over) return;
+        
+        // Cập nhật trạng thái
+        if (!this.isBallsMoving()) {
+            this.message = "Đến lượt bạn! Kéo chuột để bắn.";
+        } else {
+            this.message = "Đang di chuyển...";
+        }
+        this.statusElement.innerText = this.message;
+
+        // Cập nhật vị trí và va chạm tường
+        for (const ball of this.all_balls) {
+            ball.update();
+            ball.checkWallCollision(this.table);
+        }
+        
+        // Kiểm tra va chạm giữa các bóng
+        for (let i = 0; i < this.all_balls.length; i++) {
+            for (let j = i + 1; j < this.all_balls.length; j++) {
+                Ball.checkCollision(this.all_balls[i], this.all_balls[j]);
+            }
+        }
+        
+        // Kiểm tra bỏ lỗ
+        let cueBallPocketed = false;
+        let ballsToRemove = [];
+        
+        for (const ball of this.all_balls) {
+            if (ball.pocketed) continue;
+            
+            for (const pocketPos of this.pockets) {
+                if (ball.pos.dist(pocketPos) < POCKET_RADIUS) {
+                    ball.pocketed = true;
+
+                    if (ball === this.cue_ball) {
+                        cueBallPocketed = true;
+                        this.message = "Bóng cái bị lỗ! Đang chờ đặt lại vị trí.";
+                    } else {
+                        ballsToRemove.push(ball);
+                        this.message = `Bóng số ${ball.number} đã vào lỗ!`;
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Xử lý bóng cái bị lỗ
+        if (cueBallPocketed) {
+             setTimeout(() => {
+                if (!this.isBallsMoving()) {
+                    this.cue_ball.pos = sketch.createVector(WIDTH * 0.75, HEIGHT / 2);
+                    this.cue_ball.velocity.set(0, 0);
+                    this.cue_ball.pocketed = false;
+                    this.message = "Bóng cái đã được đặt lại. Đến lượt bạn!";
+                }
+            }, 500); 
+        }
+
+        // Loại bỏ các bóng mục tiêu đã vào lỗ
+        this.target_balls = this.target_balls.filter(b => !b.pocketed);
+        
+        // Cập nhật lại danh sách tất cả các bóng (chỉ những bóng không bị lỗ)
+        this.all_balls = this.target_balls.slice();
+        if (this.cue_ball && !this.cue_ball.pocketed) {
+             this.all_balls.unshift(this.cue_ball);
+        }
+
+        // Kiểm tra điều kiện thắng (tất cả bóng mục tiêu đã vào lỗ)
+        if (this.target_balls.length === 0) {
+            this.game_over = true;
+            this.message = "CHÚC MỪNG! Bạn đã thắng trò chơi!";
+            this.statusElement.classList.remove('text-yellow-300');
+            this.statusElement.classList.add('text-green-400');
+        }
+    }
+
+    draw() {
+        // 1. Vẽ mặt bàn (phần gỗ ngoài)
+        sketch.background(DARK_BROWN[0], DARK_BROWN[1], DARK_BROWN[2]);
+        
+        // 2. Vẽ mặt bàn (phần vải xanh)
+        sketch.fill(GREEN[0], GREEN[1], GREEN[2]);
+        sketch.noStroke();
+        sketch.rect(this.table.x, this.table.y, this.table.width, this.table.height);
+        
+        // 3. Vẽ các lỗ
+        for (const pos of this.pockets) {
+            sketch.fill(BLACK);
+            sketch.ellipse(pos.x, pos.y, POCKET_RADIUS * 2, POCKET_RADIUS * 2);
+        }
+
+        // 4. Vẽ tất cả các bóng
+        for (const ball of this.all_balls) {
+            ball.draw();
+        }
+
+        // 5. Vẽ đường ngắm/lực khi đang bắn
+        if (this.shooting_mode && this.shoot_start_pos) {
+            const mousePos = sketch.createVector(sketch.mouseX, sketch.mouseY);
+            const cueBallPos = this.cue_ball.pos;
+
+            // Tính toán vector lực bắn (ngược chiều kéo)
+            const forceVector = cueBallPos.copy().sub(mousePos);
+            
+            // Giới hạn độ dài đường ngắm
+            const lineLength = Math.min(100, forceVector.mag() * 2);
+
+            // Tính điểm cuối của đường ngắm
+            const targetLine = forceVector.copy().normalize().mult(lineLength);
+            
+            // Đường ngắm (màu đỏ)
+            sketch.stroke(RED);
+            sketch.strokeWeight(2);
+            sketch.line(cueBallPos.x, cueBallPos.y, cueBallPos.x + targetLine.x, cueBallPos.y + targetLine.y);
+            
+            // Chỉ báo lực (màu trắng)
+            sketch.stroke(WHITE);
+            sketch.strokeWeight(5);
+            sketch.line(cueBallPos.x, cueBallPos.y, mousePos.x, mousePos.y);
+        }
+        
+        // Hiển thị thông báo game over
+        if (this.game_over) {
+            sketch.fill(BLACK, 180);
+            sketch.rect(0, 0, WIDTH, HEIGHT);
+            
+            sketch.fill(WHITE);
+            sketch.textSize(40);
+            sketch.textAlign(sketch.CENTER, sketch.CENTER);
+            sketch.text("GAME OVER", WIDTH / 2, HEIGHT / 2 - 30);
+            sketch.textSize(24);
+            sketch.text(this.message, WIDTH / 2, HEIGHT / 2 + 20);
+        }
+    }
+}
+
+// --- P5.JS SETUP VÀ DRAW FUNCTIONS ---
+
+sketch = new p5(function(p) {
+    p.setup = function() {
+        p.createCanvas(WIDTH, HEIGHT).parent('game-canvas');
+        game = new BilliardsGame();
+        p.frameRate(FPS);
+        p.textSize(16); // Đặt kích thước chữ mặc định
+    }
+
+    p.draw = function() {
+        game.update();
+        game.draw();
+    }
+    
+    p.mouseReleased = function() {
+        game.handleInput();
+    }
+
+    p.mousePressed = function() {
+        game.handleInput();
+    }
+}, 'game-canvas'); // Thêm id container cho p5
+</script>
+
+</body>
+</html>

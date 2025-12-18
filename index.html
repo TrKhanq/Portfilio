@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice - My Portfolio</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a;
+            background-image: radial-gradient(600px at 0% 0%, rgba(29, 78, 216, 0.15), transparent 80%);
+            color: #94a3b8;
+            font-family: 'Roboto', sans-serif;
+            min-height: 100vh;
+        }
+
+        .flex-container {
+            display: flex;
+            padding: 50px;
+            gap: 40px;
+        }
+
+        .parent {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: auto auto auto;
+            gap: 20px;
+            flex: 3;
+        }
+
+        /* Class chung cho các khối bọc */
+        .div1, .div2, .div3, .div4, .div7 {
+            background-color: #111827;
+            border-radius: 20px;
+            padding: 25px;
+            border: 2px solid #1f2937; /* Viền mặc định để không bị giật khi hover */
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        /* FIX: Chỉ hover vào box mới đổi màu */
+        .div1:hover, .div2:hover, .div3:hover, .div4:hover, .div7:hover {
+            background-image: radial-gradient(
+                circle at center, 
+                #1e293b 0%,   /* Màu sáng ở tâm */
+                #111827 100%  /* Màu tối dần ra viền */
+            );
+            border-color: #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .div1 { grid-column: 1; grid-row: 2; }
+        .div2 { grid-column: 2; grid-row: 2; }
+        .div3 { grid-column: 1; grid-row: 3; }
+        .div4 { grid-column: 2; grid-row: 3; }
+        
+        .div5 { 
+            grid-column: span 2; 
+            grid-row: 1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+        }
+
+        .div7 { 
+            grid-column: 3; 
+            grid-row: 1 / span 3; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            text-align: center;
+        }
+
+        h1 { color: #e2e8f0; margin-top: 0; font-size: 1.6rem; }
+        .highlight-red { color: #ef4444; }
+        .highlight-yellow { color: #facc15; font-weight: bold; }
+        p { line-height: 1.6; font-size: 0.95rem; }
+
+        .flex-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .flex-item h2 {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 0;
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            border-left: 4px solid #3b82f6;
+            transition: 0.3s;
+        }
+        
+        .flex-item h2:hover {
+            background: #334155;
+            transform: translateX(10px);
+        }
+        a {
+            color:white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="flex-container"> 
+        <div class="parent">
+            <div class="div5">
+                <h1 style="color: yellow; font-size: 2.5rem; text-transform: uppercase;">Bảng vàng thành tích</h1>
+            </div>
+
+            <div class="div1">
+                <h1>IELTS <span class="highlight-red">9.5</span></h1>
+                <p>Thành thạo tiếng Anh ở cấp độ <span class="highlight-yellow">Native Speaker</span>.</p>
+                <p>Điểm tuyệt đối: Listening 9.5, Reading 9.5, Writing 9.5, Speaking 9.0.</p>
+                <p>Sẵn sàng nghiên cứu tài liệu Deep Learning mà không cần dịch.</p>
+            </div>
+
+            <div class="div2">
+                <h1>TOEIC <span class="highlight-red">1200</span></h1>
+                <p>Một chỉ số khiêm tốn nhưng đầy bí ẩn, thể hiện tinh thần "chơi trội".</p>
+                <p>Tài liệu tham khảo chính: Trò chơi điện tử và meme trên Internet.</p>
+            </div>
+
+            <div class="div3">
+                <h1>3 Văn Bằng Kỹ Sư</h1>
+                <p>Sở hữu 3 bằng kỹ sư (Điện tử, Phần mềm, Không gian) ngay năm nhất.</p>
+            </div>
+
+            <div class="div4">
+                <h1>10+ Ngôn Ngữ</h1>
+                <p>Thành thạo 10+ ngôn ngữ lập trình. Tiềm năng trở thành CEO BIG4.</p>
+            </div>
+
+            <div class="div7">
+                <img src="Ảnh thẻ.jpg" alt="Ảnh thẻ" style="width: 180px; height: 180px; object-fit: cover; border-radius: 50%; border: 4px solid #1f2937; margin-bottom: 20px;">
+                <h1>Nguyen Trong Khang</h1>
+                <h2 style="color: #64748b; font-size: 1.1rem; border:none; background:none;">Sinh viên năm nhất PTIT</h2>
+            </div>
+        </div>
+
+        <div class="flex-item">
+            <h1 style="font-size: 1.5rem; color: #5eead4;">Dự án tiêu biểu</h1>
+            <h2><a href="weather.html">Dự án 1: Weather AI</h2>
+            <h2><a href="pick.py">Dự án 2: Pick the Box</h2>
+            <h2><a href="movie.html">Dự án 3: Movie Web</h2>
+            <h2><a href="billard.html">Dự án 4: Game Billard</h2>
+            <h2><a href="ukn.html">Dự án 5: UKN....</h2>
+        </div>
+    </div>
+
+</body>
+</html>
